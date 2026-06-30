@@ -70,6 +70,27 @@
   input:focus { outline: none; box-shadow: 0 0 0 2px rgba(46,107,79,0.25); border-color: var(--accent); }
   input::placeholder { color: var(--text-muted); }
 
+  .auth-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 8px 12px; margin-bottom: 1rem;
+    background: var(--surface-2); border: 0.5px solid var(--border);
+    border-radius: var(--radius); font-size: 12.5px;
+  }
+  .auth-bar .who { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .auth-bar .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .dot-ok { background: #4f8a3f; }
+  .dot-bad { background: #c94f4e; }
+  .dot-mid { background: #c9842c; }
+  .auth-bar button { font-size: 12px; padding: 5px 10px; flex-shrink: 0; }
+
+  .signin-screen { text-align: center; padding: 3rem 1rem; }
+  .signin-screen .brand { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; }
+  .signin-screen h1 { margin-bottom: 8px; }
+  .signin-screen p { color: var(--text-secondary); font-size: 14px; margin: 0 0 1.5rem; line-height: 1.5; }
+  .signin-screen button { font-size: 15px; padding: 11px 22px; }
+  .signin-error { color: var(--danger-text); font-size: 13px; margin-top: 1rem; }
+  .loading-screen { text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: 14px; }
+
   .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1rem; }
   .tile { border-radius: var(--radius); padding: 10px 6px; text-align: center; border: 0.5px solid; }
   .tile .num { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
@@ -123,53 +144,91 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="header">
-    <div>
-      <p class="eyebrow">SGC &middot; Seattle Gummy Company</p>
-      <h1>Stock levels</h1>
-    </div>
-    <button class="primary" id="addBtn">+ Add item</button>
+
+  <div id="authBar" class="auth-bar" style="display:none;">
+    <span class="who"><span class="status-dot dot-ok" id="statusDot"></span><span id="statusText">Synced</span></span>
+    <button id="signOutBtn">Sign out</button>
   </div>
 
-  <div class="summary">
-    <div class="tile" style="background:var(--danger-bg); border-color:var(--danger-border);">
-      <div class="num" id="sumCritical" style="color:var(--danger-text);">0</div>
-      <div class="lbl" style="color:var(--danger-text);">Critical</div>
-    </div>
-    <div class="tile" style="background:var(--warn-bg); border-color:var(--warn-border);">
-      <div class="num" id="sumLow" style="color:var(--warn-text);">0</div>
-      <div class="lbl" style="color:var(--warn-text);">Low</div>
-    </div>
-    <div class="tile" style="background:var(--good-bg); border-color:var(--good-border);">
-      <div class="num" id="sumGood" style="color:var(--good-text);">0</div>
-      <div class="lbl" style="color:var(--good-text);">Good</div>
-    </div>
+  <div id="signinScreen" class="signin-screen">
+    <p class="brand">SGC &middot; Seattle Gummy Company</p>
+    <h1>Stock tracker</h1>
+    <p>Sign in with your work Microsoft account to load and save inventory data straight from your company OneDrive.</p>
+    <button class="primary" id="signInBtn">Sign in with Microsoft</button>
+    <div id="signinError" class="signin-error"></div>
   </div>
 
-  <div class="search-wrap">
-    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input id="searchInput" placeholder="Search items">
+  <div id="loadingScreen" class="loading-screen" style="display:none;">Loading your inventory from OneDrive...</div>
+
+  <div id="appShell" style="display:none;">
+    <div class="header">
+      <div>
+        <p class="eyebrow">SGC &middot; Seattle Gummy Company</p>
+        <h1>Stock levels</h1>
+      </div>
+      <button class="primary" id="addBtn">+ Add item</button>
+    </div>
+
+    <div class="summary">
+      <div class="tile" style="background:var(--danger-bg); border-color:var(--danger-border);">
+        <div class="num" id="sumCritical" style="color:var(--danger-text);">0</div>
+        <div class="lbl" style="color:var(--danger-text);">Critical</div>
+      </div>
+      <div class="tile" style="background:var(--warn-bg); border-color:var(--warn-border);">
+        <div class="num" id="sumLow" style="color:var(--warn-text);">0</div>
+        <div class="lbl" style="color:var(--warn-text);">Low</div>
+      </div>
+      <div class="tile" style="background:var(--good-bg); border-color:var(--good-border);">
+        <div class="num" id="sumGood" style="color:var(--good-text);">0</div>
+        <div class="lbl" style="color:var(--good-text);">Good</div>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" placeholder="Search items">
+    </div>
+
+    <div id="addPanel" class="panel" style="display:none;">
+      <p class="panel-title">New item</p>
+      <input id="newName" placeholder="Item name">
+      <div class="row2">
+        <input id="newCurrent" type="number" min="0" placeholder="Current qty">
+        <input id="newTarget" type="number" min="1" placeholder="Target qty">
+      </div>
+      <div class="panel-actions">
+        <button id="cancelAdd">Cancel</button>
+        <button class="primary" id="confirmAdd" style="flex:2;">Add item</button>
+      </div>
+    </div>
+
+    <div id="list" class="list"></div>
+    <p class="footer-count" id="footerCount"></p>
   </div>
 
-  <div id="addPanel" class="panel" style="display:none;">
-    <p class="panel-title">New item</p>
-    <input id="newName" placeholder="Item name">
-    <div class="row2">
-      <input id="newCurrent" type="number" min="0" placeholder="Current qty">
-      <input id="newTarget" type="number" min="1" placeholder="Target qty">
-    </div>
-    <div class="panel-actions">
-      <button id="cancelAdd">Cancel</button>
-      <button class="primary" id="confirmAdd" style="flex:2;">Add item</button>
-    </div>
-  </div>
-
-  <div id="list" class="list"></div>
-  <p class="footer-count" id="footerCount"></p>
 </div>
 
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <script>
-const STORAGE_KEY = 'warehouse-stock-data-v1';
+const CLIENT_ID = 'db8d33ea-a736-4152-be60-714f71fd7a0f';
+const TENANT_ID = '5ed35cd3-7f0d-4691-b1f9-56d422d5b3ca';
+const REDIRECT_URI = 'https://axlib-7.github.io/sgc-stock-tracker/';
+const SCOPES = ['Files.ReadWrite', 'User.Read'];
+
+const FOLDER_NAME = 'SGC Stock Tracker';
+const FILE_NAME = 'inventory.json';
+const GRAPH_FILE_URL = 'https://graph.microsoft.com/v1.0/me/drive/root:/' +
+  encodeURIComponent(FOLDER_NAME) + '/' + encodeURIComponent(FILE_NAME) + ':/content';
+
+const msalConfig = {
+  auth: {
+    clientId: CLIENT_ID,
+    authority: 'https://login.microsoftonline.com/' + TENANT_ID,
+    redirectUri: REDIRECT_URI
+  },
+  cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+};
+const msalInstance = new msal.PublicClientApplication(msalConfig);
 
 const SAMPLES = [
   { id: 1, name: 'Sour gummy worms', current: 12, target: 100 },
@@ -180,21 +239,9 @@ const SAMPLES = [
   { id: 6, name: 'Cola bottles', current: 3, target: 500 },
 ];
 
-function loadItems() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
-  return SAMPLES;
-}
-function saveItems() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch (e) {}
-}
-
-let items = loadItems();
+let items = [];
 let search = '';
-let openEditId = null;
-let editMode = {}; // id -> 'count' | 'edit'
+let editMode = {};
 
 function pct(item) {
   return item.target > 0 ? Math.round((item.current / item.target) * 100) : 0;
@@ -209,9 +256,75 @@ const styleMap = {
   warn:   { bg: 'var(--warn-bg)',   bar: 'var(--warn-bar)',   text: 'var(--warn-text)',   border: 'var(--warn-border)' },
   good:   { bg: 'var(--good-bg)',   bar: 'var(--good-bar)',   text: 'var(--good-text)',   border: 'var(--good-border)' },
 };
-
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function setStatus(text, kind) {
+  document.getElementById('statusText').textContent = text;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + (kind === 'ok' ? 'dot-ok' : kind === 'bad' ? 'dot-bad' : 'dot-mid');
+}
+
+async function getAccessToken() {
+  const account = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0];
+  if (!account) throw new Error('Not signed in');
+  try {
+    const result = await msalInstance.acquireTokenSilent({ scopes: SCOPES, account });
+    return result.accessToken;
+  } catch (e) {
+    const result = await msalInstance.acquireTokenPopup({ scopes: SCOPES });
+    msalInstance.setActiveAccount(result.account);
+    return result.accessToken;
+  }
+}
+
+async function loadFromOneDrive() {
+  document.getElementById('loadingScreen').style.display = 'block';
+  document.getElementById('appShell').style.display = 'none';
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(GRAPH_FILE_URL, { headers: { Authorization: 'Bearer ' + token } });
+    if (res.status === 404) {
+      items = SAMPLES;
+      await saveToOneDrive();
+    } else if (res.ok) {
+      items = await res.json();
+    } else {
+      throw new Error('Graph error ' + res.status);
+    }
+    setStatus('Synced', 'ok');
+  } catch (e) {
+    console.error(e);
+    items = [];
+    setStatus('Could not load from OneDrive', 'bad');
+  }
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'block';
+  render();
+}
+
+async function saveToOneDrive() {
+  setStatus('Saving...', 'mid');
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(GRAPH_FILE_URL, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(items, null, 2)
+    });
+    if (!res.ok) throw new Error('Save failed ' + res.status);
+    const now = new Date();
+    setStatus('Synced ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 'ok');
+  } catch (e) {
+    console.error(e);
+    setStatus('Save failed - check connection', 'bad');
+  }
+}
+
+function persist() {
+  render();
+  saveToOneDrive();
 }
 
 function render() {
@@ -224,7 +337,7 @@ function render() {
 
   const list = document.getElementById('list');
   if (sorted.length === 0) {
-    list.innerHTML = `<div class="empty">${items.length === 0 ? 'No items yet. Add your first item.' : 'No items match your search.'}</div>`;
+    list.innerHTML = '<div class="empty">' + (items.length === 0 ? 'No items yet. Add your first item.' : 'No items match your search.') + '</div>';
   } else {
     list.innerHTML = sorted.map((item, idx) => {
       const st = status(item._pct);
@@ -236,7 +349,7 @@ function render() {
       if (mode === 'count') {
         actionsHtml = `
           <div class="crate-row">
-            <button class="crate-step step-btn" data-id="${item.id}" data-delta="-3" aria-label="Remove one crate of 3">−3</button>
+            <button class="crate-step step-btn" data-id="${item.id}" data-delta="-3" aria-label="Remove one crate of 3">-3</button>
             <input type="number" min="0" class="crate-input" id="countInput-${item.id}" value="${item.current}" placeholder="Count">
             <button class="crate-step step-btn" data-id="${item.id}" data-delta="3" aria-label="Add one crate of 3">+3</button>
           </div>
@@ -293,7 +406,7 @@ function render() {
   }
 
   document.getElementById('footerCount').textContent = items.length > 0
-    ? `${items.length} item${items.length !== 1 ? 's' : ''} tracked` : '';
+    ? items.length + ' item' + (items.length !== 1 ? 's' : '') + ' tracked' : '';
 
   attachCardListeners();
 }
@@ -311,7 +424,7 @@ function attachCardListeners() {
   document.querySelectorAll('.delete-btn').forEach(b => b.onclick = () => {
     items = items.filter(i => String(i.id) !== b.dataset.id);
     delete editMode[b.dataset.id];
-    saveItems(); render();
+    persist();
   });
   document.querySelectorAll('.save-count-btn').forEach(b => b.onclick = () => {
     const id = b.dataset.id;
@@ -321,7 +434,7 @@ function attachCardListeners() {
       if (it) it.current = val;
     }
     delete editMode[id];
-    saveItems(); render();
+    persist();
   });
   document.querySelectorAll('.save-edit-btn').forEach(b => b.onclick = () => {
     const id = b.dataset.id;
@@ -332,12 +445,11 @@ function attachCardListeners() {
       const it = items.find(i => String(i.id) === id);
       if (it) { it.name = name; it.current = isNaN(cur) ? 0 : cur; it.target = tgt; }
       delete editMode[id];
-      saveItems(); render();
+      persist();
     }
   });
-  // Enter key support on count inputs
   document.querySelectorAll('[id^="countInput-"]').forEach(inp => {
-    inp.onkeydown = e => { if (e.key === 'Enter') document.querySelector(`.save-count-btn[data-id="${inp.id.split('-')[1]}"]`).click(); };
+    inp.onkeydown = e => { if (e.key === 'Enter') document.querySelector('.save-count-btn[data-id="' + inp.id.split('-')[1] + '"]').click(); };
   });
 }
 
@@ -359,12 +471,39 @@ document.getElementById('confirmAdd').addEventListener('click', () => {
   const target = parseInt(document.getElementById('newTarget').value) || 0;
   if (!name || target <= 0) return;
   items.push({ id: Date.now(), name, current, target });
-  saveItems();
   document.getElementById('cancelAdd').click();
-  render();
+  persist();
 });
 
-render();
+async function onSignedIn() {
+  document.getElementById('signinScreen').style.display = 'none';
+  document.getElementById('authBar').style.display = 'flex';
+  await loadFromOneDrive();
+}
+
+document.getElementById('signInBtn').addEventListener('click', async () => {
+  document.getElementById('signinError').textContent = '';
+  try {
+    const result = await msalInstance.loginPopup({ scopes: SCOPES });
+    msalInstance.setActiveAccount(result.account);
+    await onSignedIn();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('signinError').textContent = 'Sign-in failed. Please try again.';
+  }
+});
+
+document.getElementById('signOutBtn').addEventListener('click', () => {
+  msalInstance.logoutPopup().catch(() => {});
+});
+
+(function init() {
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    msalInstance.setActiveAccount(accounts[0]);
+    onSignedIn();
+  }
+})();
 </script>
 </body>
 </html>
