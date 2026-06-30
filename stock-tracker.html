@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>SGC Stock tracker</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --surface-2: #fbfaf8;
+    --text: #1c1b19;
+    --text-secondary: #6b6964;
+    --text-muted: #9c9a93;
+    --border: #e4e2dc;
+    --border-strong: #d2cfc7;
+    --accent: #2e6b4f;
+    --danger-bg: #fcebeb; --danger-bar: #c94f4e; --danger-text: #8c2f2e; --danger-border: #ecc8c7;
+    --warn-bg: #fdf2e2; --warn-bar: #c9842c; --warn-text: #8c5a17; --warn-border: #ecd8b6;
+    --good-bg: #eaf3e4; --good-bar: #4f8a3f; --good-text: #335e29; --good-border: #c9ddbe;
+    --radius: 10px;
+    font-synthesis: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #191816;
+      --surface: #232220;
+      --surface-2: #292825;
+      --text: #f0eee8;
+      --text-secondary: #b3b0a7;
+      --text-muted: #837f75;
+      --border: #38362f;
+      --border-strong: #49463c;
+      --danger-bg: #382323; --danger-bar: #d96a69; --danger-text: #f0a8a7; --danger-border: #4d2f2e;
+      --warn-bg: #3a2f1c; --warn-bar: #d99a44; --warn-text: #f0c184; --warn-border: #4d3c22;
+      --good-bg: #28331f; --good-bar: #6fa85c; --good-text: #a8d394; --good-border: #3a4a2c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+  .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 1.25rem; }
+  .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 600; margin: 0 0 2px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  button {
+    font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+    border: 0.5px solid var(--border-strong); background: var(--surface);
+    color: var(--text); border-radius: var(--radius); padding: 9px 14px;
+    transition: background 0.15s, transform 0.1s; white-space: nowrap;
+  }
+  button:hover { background: var(--surface-2); }
+  button:active { transform: scale(0.97); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #275c43; }
+  button.ghost { border-color: transparent; background: transparent; padding: 9px 10px; }
+  button.ghost:hover { background: var(--surface-2); }
+  button.danger-text { color: var(--danger-text); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  input {
+    font-family: inherit; font-size: 15px; padding: 9px 11px; width: 100%;
+    border: 0.5px solid var(--border-strong); border-radius: var(--radius);
+    background: var(--surface); color: var(--text);
+  }
+  input:focus { outline: none; box-shadow: 0 0 0 2px rgba(46,107,79,0.25); border-color: var(--accent); }
+  input::placeholder { color: var(--text-muted); }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1rem; }
+  .tile { border-radius: var(--radius); padding: 10px 6px; text-align: center; border: 0.5px solid; }
+  .tile .num { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .tile .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; opacity: 0.85; margin-top: 2px; }
+
+  .search-wrap { position: relative; margin-bottom: 1rem; }
+  .search-wrap input { padding-left: 34px; }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+
+  .panel { background: var(--surface-2); border: 0.5px solid var(--border-strong); border-radius: 12px; padding: 14px; margin-bottom: 1rem; }
+  .panel-title { font-size: 13px; font-weight: 600; margin: 0 0 10px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .panel-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .panel-actions button { flex: 1; }
+
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .card { position: relative; border-radius: 12px; overflow: hidden; border: 0.5px solid var(--border); background: var(--surface); }
+  .card-fill { position: absolute; inset: 0; right: auto; pointer-events: none; transition: width 0.35s ease; }
+  .card-inner { position: relative; padding: 12px 14px; }
+  .card-top { display: flex; align-items: center; gap: 10px; }
+  .rank {
+    width: 26px; height: 26px; flex-shrink: 0; border-radius: 7px; display: flex;
+    align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+    font-variant-numeric: tabular-nums; border: 0.5px solid;
+  }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name { font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-qty { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+  .card-pct { text-align: right; flex-shrink: 0; }
+  .pct-num { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .pct-lbl { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; opacity: 0.85; margin-top: 2px; }
+  .bar-track { margin-top: 10px; height: 4px; background: var(--border-strong); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.35s ease; }
+  .card-actions { margin-top: 10px; display: flex; gap: 6px; }
+  .card-actions button { flex: 1; font-size: 12.5px; padding: 7px 10px; }
+  .card-actions button.icon-btn { flex: 0 0 auto; padding: 7px 11px; }
+  .crate-row { display: flex; gap: 6px; margin-top: 10px; align-items: center; }
+  .crate-step {
+    flex: 0 0 auto; width: 38px; height: 38px; padding: 0; font-size: 16px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .crate-input { flex: 1; text-align: center; font-weight: 600; }
+  .crate-hint { font-size: 11px; color: var(--text-muted); text-align: center; margin: 6px 0 0; }
+  .save-cancel-row { display: flex; gap: 6px; margin-top: 8px; }
+  .save-cancel-row button { flex: 1; font-size: 12.5px; padding: 7px 10px; }
+
+  .empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 14px; }
+  .footer-count { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 1.25rem; }
+  .icon { width: 15px; height: 15px; display: inline-block; vertical-align: -2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <p class="eyebrow">SGC &middot; Seattle Gummy Company</p>
+      <h1>Stock levels</h1>
+    </div>
+    <button class="primary" id="addBtn">+ Add item</button>
+  </div>
+
+  <div class="summary">
+    <div class="tile" style="background:var(--danger-bg); border-color:var(--danger-border);">
+      <div class="num" id="sumCritical" style="color:var(--danger-text);">0</div>
+      <div class="lbl" style="color:var(--danger-text);">Critical</div>
+    </div>
+    <div class="tile" style="background:var(--warn-bg); border-color:var(--warn-border);">
+      <div class="num" id="sumLow" style="color:var(--warn-text);">0</div>
+      <div class="lbl" style="color:var(--warn-text);">Low</div>
+    </div>
+    <div class="tile" style="background:var(--good-bg); border-color:var(--good-border);">
+      <div class="num" id="sumGood" style="color:var(--good-text);">0</div>
+      <div class="lbl" style="color:var(--good-text);">Good</div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="searchInput" placeholder="Search items">
+  </div>
+
+  <div id="addPanel" class="panel" style="display:none;">
+    <p class="panel-title">New item</p>
+    <input id="newName" placeholder="Item name">
+    <div class="row2">
+      <input id="newCurrent" type="number" min="0" placeholder="Current qty">
+      <input id="newTarget" type="number" min="1" placeholder="Target qty">
+    </div>
+    <div class="panel-actions">
+      <button id="cancelAdd">Cancel</button>
+      <button class="primary" id="confirmAdd" style="flex:2;">Add item</button>
+    </div>
+  </div>
+
+  <div id="list" class="list"></div>
+  <p class="footer-count" id="footerCount"></p>
+</div>
+
+<script>
+const STORAGE_KEY = 'warehouse-stock-data-v1';
+
+const SAMPLES = [
+  { id: 1, name: 'Sour gummy worms', current: 12, target: 100 },
+  { id: 2, name: 'Peach rings', current: 85, target: 100 },
+  { id: 3, name: 'Gummy bears', current: 45, target: 100 },
+  { id: 4, name: 'Mango bites', current: 8, target: 200 },
+  { id: 5, name: 'Watermelon slices', current: 150, target: 200 },
+  { id: 6, name: 'Cola bottles', current: 3, target: 500 },
+];
+
+function loadItems() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return SAMPLES;
+}
+function saveItems() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch (e) {}
+}
+
+let items = loadItems();
+let search = '';
+let openEditId = null;
+let editMode = {}; // id -> 'count' | 'edit'
+
+function pct(item) {
+  return item.target > 0 ? Math.round((item.current / item.target) * 100) : 0;
+}
+function status(p) {
+  if (p <= 30) return { key: 'danger', label: 'Critical' };
+  if (p <= 70) return { key: 'warn', label: 'Low' };
+  return { key: 'good', label: 'Good' };
+}
+const styleMap = {
+  danger: { bg: 'var(--danger-bg)', bar: 'var(--danger-bar)', text: 'var(--danger-text)', border: 'var(--danger-border)' },
+  warn:   { bg: 'var(--warn-bg)',   bar: 'var(--warn-bar)',   text: 'var(--warn-text)',   border: 'var(--warn-border)' },
+  good:   { bg: 'var(--good-bg)',   bar: 'var(--good-bar)',   text: 'var(--good-text)',   border: 'var(--good-border)' },
+};
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function render() {
+  const filtered = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+  const sorted = filtered.map(i => ({ ...i, _pct: pct(i) })).sort((a,b) => a._pct - b._pct);
+
+  document.getElementById('sumCritical').textContent = items.filter(i => pct(i) <= 30).length;
+  document.getElementById('sumLow').textContent = items.filter(i => { const p = pct(i); return p > 30 && p <= 70; }).length;
+  document.getElementById('sumGood').textContent = items.filter(i => pct(i) > 70).length;
+
+  const list = document.getElementById('list');
+  if (sorted.length === 0) {
+    list.innerHTML = `<div class="empty">${items.length === 0 ? 'No items yet. Add your first item.' : 'No items match your search.'}</div>`;
+  } else {
+    list.innerHTML = sorted.map((item, idx) => {
+      const st = status(item._pct);
+      const sm = styleMap[st.key];
+      const clamp = Math.min(item._pct, 100);
+      const mode = editMode[item.id];
+
+      let actionsHtml = '';
+      if (mode === 'count') {
+        actionsHtml = `
+          <div class="crate-row">
+            <button class="crate-step step-btn" data-id="${item.id}" data-delta="-3" aria-label="Remove one crate of 3">−3</button>
+            <input type="number" min="0" class="crate-input" id="countInput-${item.id}" value="${item.current}" placeholder="Count">
+            <button class="crate-step step-btn" data-id="${item.id}" data-delta="3" aria-label="Add one crate of 3">+3</button>
+          </div>
+          <p class="crate-hint">1 crate = 3 units &middot; type any number directly</p>
+          <div class="save-cancel-row">
+            <button class="cancel-mode-btn" data-id="${item.id}">Cancel</button>
+            <button class="primary save-count-btn" data-id="${item.id}">Save</button>
+          </div>`;
+      } else if (mode === 'edit') {
+        actionsHtml = `
+          <div style="margin-top:10px;">
+            <input id="editName-${item.id}" value="${escapeHtml(item.name)}" placeholder="Item name" style="margin-bottom:6px;">
+            <div class="row2" style="margin-top:0; margin-bottom:8px;">
+              <input type="number" min="0" id="editCurrent-${item.id}" value="${item.current}" placeholder="Current qty">
+              <input type="number" min="1" id="editTarget-${item.id}" value="${item.target}" placeholder="Target qty">
+            </div>
+            <div class="card-actions">
+              <button class="danger-text delete-btn" data-id="${item.id}" style="flex:0 0 auto;">Delete</button>
+              <div style="flex:1;"></div>
+              <button class="cancel-mode-btn" data-id="${item.id}" style="flex:0 0 auto;">Cancel</button>
+              <button class="primary save-edit-btn" data-id="${item.id}" style="flex:0 0 auto;">Save changes</button>
+            </div>
+          </div>`;
+      } else {
+        actionsHtml = `
+          <div class="card-actions">
+            <button class="count-btn" data-id="${item.id}">Update count</button>
+            <button class="icon-btn edit-btn" data-id="${item.id}" aria-label="Edit ${escapeHtml(item.name)}">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+          </div>`;
+      }
+
+      return `
+        <div class="card" style="border-color:${sm.border};">
+          <div class="card-fill" style="width:${clamp}%; background:${sm.bg};"></div>
+          <div class="card-inner">
+            <div class="card-top">
+              <div class="rank" style="background:${sm.bg}; color:${sm.text}; border-color:${sm.border};">${idx+1}</div>
+              <div class="card-info">
+                <div class="card-name">${escapeHtml(item.name)}</div>
+                <div class="card-qty">${item.current.toLocaleString()} / ${item.target.toLocaleString()} units</div>
+              </div>
+              <div class="card-pct">
+                <div class="pct-num" style="color:${sm.text};">${item._pct}%</div>
+                <div class="pct-lbl" style="color:${sm.text};">${st.label}</div>
+              </div>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width:${clamp}%; background:${sm.bar};"></div></div>
+            ${actionsHtml}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  document.getElementById('footerCount').textContent = items.length > 0
+    ? `${items.length} item${items.length !== 1 ? 's' : ''} tracked` : '';
+
+  attachCardListeners();
+}
+
+function attachCardListeners() {
+  document.querySelectorAll('.count-btn').forEach(b => b.onclick = () => { editMode[b.dataset.id] = 'count'; render(); });
+  document.querySelectorAll('.edit-btn').forEach(b => b.onclick = () => { editMode[b.dataset.id] = 'edit'; render(); });
+  document.querySelectorAll('.cancel-mode-btn').forEach(b => b.onclick = () => { delete editMode[b.dataset.id]; render(); });
+  document.querySelectorAll('.step-btn').forEach(b => b.onclick = () => {
+    const input = document.getElementById('countInput-' + b.dataset.id);
+    const current = parseInt(input.value) || 0;
+    const next = Math.max(0, current + parseInt(b.dataset.delta));
+    input.value = next;
+  });
+  document.querySelectorAll('.delete-btn').forEach(b => b.onclick = () => {
+    items = items.filter(i => String(i.id) !== b.dataset.id);
+    delete editMode[b.dataset.id];
+    saveItems(); render();
+  });
+  document.querySelectorAll('.save-count-btn').forEach(b => b.onclick = () => {
+    const id = b.dataset.id;
+    const val = parseInt(document.getElementById('countInput-' + id).value);
+    if (!isNaN(val) && val >= 0) {
+      const it = items.find(i => String(i.id) === id);
+      if (it) it.current = val;
+    }
+    delete editMode[id];
+    saveItems(); render();
+  });
+  document.querySelectorAll('.save-edit-btn').forEach(b => b.onclick = () => {
+    const id = b.dataset.id;
+    const name = document.getElementById('editName-' + id).value.trim();
+    const cur = parseInt(document.getElementById('editCurrent-' + id).value);
+    const tgt = parseInt(document.getElementById('editTarget-' + id).value);
+    if (name && tgt > 0) {
+      const it = items.find(i => String(i.id) === id);
+      if (it) { it.name = name; it.current = isNaN(cur) ? 0 : cur; it.target = tgt; }
+      delete editMode[id];
+      saveItems(); render();
+    }
+  });
+  // Enter key support on count inputs
+  document.querySelectorAll('[id^="countInput-"]').forEach(inp => {
+    inp.onkeydown = e => { if (e.key === 'Enter') document.querySelector(`.save-count-btn[data-id="${inp.id.split('-')[1]}"]`).click(); };
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', e => { search = e.target.value; render(); });
+
+document.getElementById('addBtn').addEventListener('click', () => {
+  document.getElementById('addPanel').style.display = 'block';
+  document.getElementById('newName').focus();
+});
+document.getElementById('cancelAdd').addEventListener('click', () => {
+  document.getElementById('addPanel').style.display = 'none';
+  document.getElementById('newName').value = '';
+  document.getElementById('newCurrent').value = '';
+  document.getElementById('newTarget').value = '';
+});
+document.getElementById('confirmAdd').addEventListener('click', () => {
+  const name = document.getElementById('newName').value.trim();
+  const current = parseInt(document.getElementById('newCurrent').value) || 0;
+  const target = parseInt(document.getElementById('newTarget').value) || 0;
+  if (!name || target <= 0) return;
+  items.push({ id: Date.now(), name, current, target });
+  saveItems();
+  document.getElementById('cancelAdd').click();
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
