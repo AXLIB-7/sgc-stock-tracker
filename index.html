@@ -104,7 +104,7 @@
   .card-actions button { flex: 1; font-size: 12px; padding: 7px 8px; }
   .card-actions button.icon-btn { flex: 0 0 auto; padding: 7px 10px; }
   .crate-row { display: flex; gap: 6px; margin-top: 10px; align-items: center; }
-  .crate-step { flex: 0 0 auto; width: 38px; height: 38px; padding: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .crate-step { flex: 0 0 auto; width: 34px; height: 38px; padding: 0; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
   .crate-input { flex: 1; text-align: center; font-weight: 600; }
   .crate-hint { font-size: 11px; color: var(--text-muted); text-align: center; margin: 6px 0 0; }
   .save-cancel-row { display: flex; gap: 6px; margin-top: 8px; }
@@ -359,10 +359,12 @@ function render() {
         actionsHtml = `
           <div class="crate-row">
             <button class="crate-step step-btn" data-id="${item.id}" data-delta="-3">-3</button>
+            <button class="crate-step step-btn" data-id="${item.id}" data-delta="-1">-1</button>
             <input type="number" min="0" class="crate-input" id="countInput-${item.id}" value="${item.current}" placeholder="Count">
+            <button class="crate-step step-btn" data-id="${item.id}" data-delta="1">+1</button>
             <button class="crate-step step-btn" data-id="${item.id}" data-delta="3">+3</button>
           </div>
-          <p class="crate-hint">1 crate = 3 units &middot; type any number directly</p>
+          <p class="crate-hint">&plusmn;1 unit &middot; &plusmn;3 units (1 crate) &middot; or type any number</p>
           <div class="save-cancel-row">
             <button class="cancel-mode-btn" data-id="${item.id}">Cancel</button>
             <button class="primary save-count-btn" data-id="${item.id}">Save</button>
