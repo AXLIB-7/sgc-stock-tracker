@@ -164,6 +164,7 @@
       </div>
       <div class="header-actions">
         <button id="pouchToggleBtn">View in pouches</button>
+        <button id="exportExcelBtn">Export Excel</button>
         <button id="logViewBtn">View log</button>
         <button class="primary" id="addBtn">+ Add item</button>
       </div>
@@ -218,6 +219,7 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script>
 const CLIENT_ID = 'db8d33ea-a736-4152-be60-714f71fd7a0f';
@@ -560,6 +562,38 @@ function showInventoryScreen() {
   document.getElementById('appShell').style.display = 'block';
 }
 
+function exportInventoryExcel() {
+  const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
+
+  const rows = sorted.map(item => ({
+    'Item':             item.name,
+    'Current (pouches)': item.current * POUCHES_PER_UNIT,
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  ws['!cols'] = [
+    { wch: 28 }, // Item
+    { wch: 18 }, // Current pouches
+  ];
+
+  ws['!autofilter'] = { ref: 'A1:B' + (rows.length + 1) };
+  ws['!tables'] = [{
+    name: 'StockInventory',
+    ref:  'A1:B' + (rows.length + 1),
+    headerRow: true,
+    totalsRow: false,
+  }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Stock Levels');
+
+  const now = new Date();
+  const month = now.toLocaleString('en-US', { month: 'long', year: 'numeric' }).replace(' ', '-');
+  XLSX.writeFile(wb, 'sgc-inventory-' + month + '.xlsx');
+}
+
+document.getElementById('exportExcelBtn').addEventListener('click', exportInventoryExcel);
 document.getElementById('pouchToggleBtn').addEventListener('click', () => { pouchMode = !pouchMode; render(); });
 document.getElementById('logViewBtn').addEventListener('click', showLogScreen);
 document.getElementById('backFromLog').addEventListener('click', showInventoryScreen);
