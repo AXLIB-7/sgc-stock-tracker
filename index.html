@@ -197,6 +197,7 @@
         <input id="newCurrent" type="number" min="0" placeholder="Current qty (units)">
         <input id="newTarget" type="number" min="1" placeholder="Target qty (units)">
       </div>
+      <input id="newPouches" type="number" min="1" placeholder="Pouches per unit (default 225)" style="margin-top:8px;">
       <div class="panel-actions">
         <button id="cancelAdd">Cancel</button>
         <button class="primary" id="confirmAdd" style="flex:2;">Add item</button>
@@ -226,7 +227,8 @@ const CLIENT_ID = 'db8d33ea-a736-4152-be60-714f71fd7a0f';
 const TENANT_ID = '5ed35cd3-7f0d-4691-b1f9-56d422d5b3ca';
 const REDIRECT_URI = 'https://axlib-7.github.io/sgc-stock-tracker/';
 const SCOPES = ['Files.ReadWrite', 'User.Read'];
-const POUCHES_PER_UNIT = 225;
+const POUCHES_PER_UNIT = 225; // default fallback
+function factor(item) { return item.pouchesPerUnit || POUCHES_PER_UNIT; }
 const FOLDER_NAME = 'SGC Stock Tracker';
 const FILE_NAME = 'inventory.json';
 const GRAPH_FILE_URL = 'https://graph.microsoft.com/v1.0/me/drive/root:/' +
@@ -268,7 +270,7 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function fmt(n) { return Number(n).toLocaleString(); }
-function displayVal(units) { return pouchMode ? fmt(units * POUCHES_PER_UNIT) : fmt(units); }
+function displayVal(units, f) { return pouchMode ? fmt(units * f) : fmt(units); }
 function displayUnit() { return pouchMode ? 'pouches' : 'units'; }
 
 function setStatus(text, kind) {
@@ -383,7 +385,7 @@ function render() {
               </div>
               <div>
                 <label>= Pouches</label>
-                <input type="number" id="takePouches-${item.id}" placeholder="${POUCHES_PER_UNIT}" readonly style="color:var(--text-muted);">
+                <input type="number" id="takePouches-${item.id}" placeholder="${factor(item)}" readonly style="color:var(--text-muted);">
               </div>
             </div>
           </div>
@@ -399,6 +401,7 @@ function render() {
               <input type="number" min="0" id="editCurrent-${item.id}" value="${item.current}" placeholder="Current qty">
               <input type="number" min="1" id="editTarget-${item.id}" value="${item.target}" placeholder="Target qty">
             </div>
+            <input type="number" min="1" id="editPouches-${item.id}" value="${item.pouchesPerUnit || POUCHES_PER_UNIT}" placeholder="Pouches per unit" style="margin-bottom:8px;">
             <div class="card-actions">
               <button class="danger-text delete-btn" data-id="${item.id}" style="flex:0 0 auto;">Delete</button>
               <div style="flex:1;"></div>
@@ -425,7 +428,7 @@ function render() {
               <div class="rank" style="background:${sm.bg}; color:${sm.text}; border-color:${sm.border};">${idx+1}</div>
               <div class="card-info">
                 <div class="card-name">${escapeHtml(item.name)} <span class="${badgeClass}">${badgeLabel}</span></div>
-                <div class="card-qty">${displayVal(item.current)} / ${displayVal(item.target)}</div>
+                <div class="card-qty">${displayVal(item.current, factor(item))} / ${displayVal(item.target, factor(item))}</div>
               </div>
               <div class="card-pct">
                 <div class="pct-num" style="color:${sm.text};">${item._pct}%</div>
@@ -471,7 +474,7 @@ function attachCardListeners() {
     const tgt = parseInt(document.getElementById('editTarget-' + id).value);
     if (name && tgt > 0) {
       const it = items.find(i => String(i.id) === id);
-      if (it) { it.name = name; it.current = isNaN(cur) ? 0 : cur; it.target = tgt; }
+      if (it) { it.name = name; it.current = isNaN(cur) ? 0 : cur; it.target = tgt; it.pouchesPerUnit = parseInt(document.getElementById('editPouches-' + id).value) || POUCHES_PER_UNIT; }
       delete editMode[id]; persist();
     }
   });
@@ -496,7 +499,7 @@ function attachCardListeners() {
       itemName: it.name,
       lotNumber: lot,
       unitsRemoved: removed,
-      pouchesRemoved: removed * POUCHES_PER_UNIT,
+      pouchesRemoved: removed * factor(it),
       date: new Date().toISOString()
     });
     delete editMode[id];
@@ -511,7 +514,8 @@ function attachCardListeners() {
 function updatePouchPreview(id) {
   const qtyInp = document.getElementById('takeQty-' + id);
   const pouchInp = document.getElementById('takePouches-' + id);
-  if (qtyInp && pouchInp) pouchInp.value = ((parseInt(qtyInp.value) || 0) * POUCHES_PER_UNIT).toLocaleString();
+  const it = items.find(i => String(i.id) === String(id));
+  if (qtyInp && pouchInp && it) pouchInp.value = ((parseInt(qtyInp.value) || 0) * factor(it)).toLocaleString();
 }
 
 function renderLog() {
@@ -567,7 +571,7 @@ function exportInventoryExcel() {
 
   const rows = sorted.map(item => ({
     'Item':             item.name,
-    'Current (pouches)': item.current * POUCHES_PER_UNIT,
+    'Current (pouches)': item.current * factor(item),
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -605,14 +609,15 @@ document.getElementById('addBtn').addEventListener('click', () => {
 });
 document.getElementById('cancelAdd').addEventListener('click', () => {
   document.getElementById('addPanel').style.display = 'none';
-  ['newName','newCurrent','newTarget'].forEach(id => document.getElementById(id).value = '');
+  ['newName','newCurrent','newTarget','newPouches'].forEach(id => document.getElementById(id).value = '');
 });
 document.getElementById('confirmAdd').addEventListener('click', () => {
   const name = document.getElementById('newName').value.trim();
   const current = parseInt(document.getElementById('newCurrent').value) || 0;
   const target = parseInt(document.getElementById('newTarget').value) || 0;
+  const ppu = parseInt(document.getElementById('newPouches').value) || POUCHES_PER_UNIT;
   if (!name || target <= 0) return;
-  items.push({ id: Date.now(), name, current, target });
+  items.push({ id: Date.now(), name, current, target, pouchesPerUnit: ppu });
   document.getElementById('cancelAdd').click();
   persist();
 });
