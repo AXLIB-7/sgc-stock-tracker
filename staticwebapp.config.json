@@ -1,0 +1,22 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html"
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY"
+  },
+  "mimeTypes": {
+    ".json": "application/json"
+  },
+  "routes": [
+    {
+      "route": "/styles.css",
+      "headers": { "Cache-Control": "public, max-age=3600" }
+    },
+    {
+      "route": "/app.js",
+      "headers": { "Cache-Control": "public, max-age=3600" }
+    }
+  ]
+}
