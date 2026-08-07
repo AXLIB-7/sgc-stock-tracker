@@ -106,12 +106,12 @@
 
         <div class="list-controls">
           <select id="sortSelect" aria-label="Sort items by">
-            <option value="pct-asc">Stock level: lowest first</option>
-            <option value="pct-desc">Stock level: highest first</option>
+            <option value="pct">Stock level</option>
             <option value="units">Total units</option>
             <option value="pouches">Total pouches</option>
-            <option value="alpha">Alphabetical (A–Z)</option>
+            <option value="alpha">Alphabetical</option>
           </select>
+          <button id="sortDirBtn" type="button">Lowest first</button>
           <button id="groupToggleBtn" type="button">Group by category</button>
         </div>
 
@@ -127,9 +127,22 @@
             <h1>Take-out log</h1>
           </div>
           <div class="header-actions">
+            <button id="renameLogBtn" type="button">Fix a name</button>
             <button class="primary" id="exportCsvBtn" type="button">Export CSV</button>
           </div>
         </div>
+
+        <div id="renamePanel" class="panel" style="display:none;">
+          <p class="panel-title">Rename in log</p>
+          <input id="renameFrom" placeholder="Exact name as it appears now, e.g. Mocca Shots Dutch">
+          <input id="renameTo" placeholder="Correct name, e.g. Dutch" style="margin-top:8px;">
+          <div class="panel-actions">
+            <button id="cancelRename" type="button">Cancel</button>
+            <button class="primary" id="confirmRename" style="flex:2;" type="button">Apply to all matches</button>
+          </div>
+          <p id="renameResult" style="font-size:12px; color:var(--text-muted); margin:10px 0 0;"></p>
+        </div>
+
         <div id="logList"></div>
       </section>
 

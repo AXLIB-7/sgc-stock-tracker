@@ -35,15 +35,23 @@ let search = '';
 let editMode = {};
 let pouchMode = false;
 
-// Some take-outs were logged under an old/inconsistent product name before it
-// was corrected. This maps those old names to the current correct name so the
-// log (and its export) always display the right name, regardless of when the
-// take-out was recorded.
+// Some historical take-outs were logged under an old/inconsistent product
+// name before it was corrected. Used only as a last-resort fallback below,
+// for entries whose item no longer exists at all.
 const NAME_ALIASES = {
-  'Mocca Shots Mint': 'Mint',
-  'Mocca Shots Dutch': 'Dutch',
+  'Mint': 'Mocca Shots Mint',
+  'Dutch': 'Mocca Shots Dutch',
 };
 function normalizeItemName(name) { return NAME_ALIASES[name] || name; }
+
+// A log entry's "true" name is whatever the linked item is currently called —
+// so renaming an item (Edit on its card) instantly updates every past log
+// entry for it too, everywhere it's shown or exported. The name stored on the
+// entry itself is only a fallback for the rare case the item was deleted.
+function logEntryName(e) {
+  const it = items.find(i => String(i.id) === String(e.itemId));
+  return it ? it.name : normalizeItemName(e.itemName);
+}
 
 function pct(item) { return item.target > 0 ? Math.round((item.current / item.target) * 100) : 0; }
 function status(p) {
@@ -127,16 +135,17 @@ function persist() { render(); saveToOneDrive(); }
 const RING_R = 26;
 const RING_C = 2 * Math.PI * RING_R;
 
-let sortMode = 'pct-asc'; // 'pct-asc' | 'pct-desc' | 'units' | 'pouches' | 'alpha'
+let sortMetric = 'pct'; // 'pct' | 'units' | 'pouches' | 'alpha'
+let sortDir = 'asc';    // 'asc' | 'desc' — applies to whichever metric is selected
 let groupByCategory = false;
 
 function sortItemsList(arr) {
   const out = [...arr];
-  if (sortMode === 'pct-desc') out.sort((a, b) => b._pct - a._pct);
-  else if (sortMode === 'units') out.sort((a, b) => b.current - a.current);
-  else if (sortMode === 'pouches') out.sort((a, b) => (b.current * factor(b)) - (a.current * factor(a)));
-  else if (sortMode === 'alpha') out.sort((a, b) => a.name.localeCompare(b.name));
-  else out.sort((a, b) => a._pct - b._pct); // 'pct-asc' default
+  const dir = sortDir === 'desc' ? -1 : 1;
+  if (sortMetric === 'units') out.sort((a, b) => dir * (a.current - b.current));
+  else if (sortMetric === 'pouches') out.sort((a, b) => dir * ((a.current * factor(a)) - (b.current * factor(b))));
+  else if (sortMetric === 'alpha') out.sort((a, b) => dir * a.name.localeCompare(b.name));
+  else out.sort((a, b) => dir * (a._pct - b._pct)); // 'pct' default
   return out;
 }
 
@@ -253,6 +262,7 @@ function renderCard(item) {
 }
 
 function render() {
+
   const filtered = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
   const withPct = filtered.map(i => ({ ...i, _pct: pct(i) }));
   const sorted = sortItemsList(withPct);
@@ -266,7 +276,12 @@ function render() {
   if (pouchMode) { pouchBtn.textContent = 'View in units'; pouchBtn.classList.add('active-toggle'); }
   else { pouchBtn.textContent = 'View in pouches'; pouchBtn.classList.remove('active-toggle'); }
 
-  document.getElementById('sortSelect').value = sortMode;
+  document.getElementById('sortSelect').value = sortMetric;
+
+  const dirBtn = document.getElementById('sortDirBtn');
+  if (sortMetric === 'alpha') { dirBtn.textContent = sortDir === 'desc' ? 'Z–A' : 'A–Z'; }
+  else { dirBtn.textContent = sortDir === 'desc' ? 'Highest first' : 'Lowest first'; }
+
   const groupBtn = document.getElementById('groupToggleBtn');
   if (groupByCategory) { groupBtn.classList.add('active-toggle'); }
   else { groupBtn.classList.remove('active-toggle'); }
@@ -377,7 +392,7 @@ function renderLog() {
     return `
       <div class="log-entry">
         <div class="log-cell-name">
-          <div class="log-item-name">${escapeHtml(normalizeItemName(e.itemName))}</div>
+          <div class="log-item-name">${escapeHtml(logEntryName(e))}</div>
           <div class="log-lot">Lot <span class="mono">${escapeHtml(e.lotNumber)}</span></div>
         </div>
         <div class="log-cell-qty">
@@ -401,7 +416,7 @@ function exportCSV() {
   // as two separate lots.
   const firstByKey = new Map();
   log.forEach(e => {
-    const key = normalizeItemName(e.itemName) + '||' + e.lotNumber;
+    const key = logEntryName(e) + '||' + e.lotNumber;
     const existing = firstByKey.get(key);
     if (!existing || new Date(e.date) < new Date(existing.date)) {
       firstByKey.set(key, e);
@@ -412,7 +427,7 @@ function exportCSV() {
 
   const header = ['Date', 'Item', 'Lot Number'];
   const rows = uniqueEntries.map(e => [
-    formatShortDate(e.date), normalizeItemName(e.itemName), e.lotNumber
+    formatShortDate(e.date), logEntryName(e), e.lotNumber
   ].map(v => '"' + String(v).replace(/"/g, '""') + '"'));
   const csv = [header, ...rows].map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -479,6 +494,32 @@ document.querySelectorAll('[data-nav="stock"]').forEach(b => b.addEventListener(
 document.querySelectorAll('[data-nav="log"]').forEach(b => b.addEventListener('click', showLogScreen));
 document.getElementById('backFromLog').addEventListener('click', showInventoryScreen);
 document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+document.getElementById('renameLogBtn').addEventListener('click', () => {
+  document.getElementById('renamePanel').style.display = 'block';
+  document.getElementById('renameResult').textContent = '';
+  document.getElementById('renameFrom').focus();
+});
+document.getElementById('cancelRename').addEventListener('click', () => {
+  document.getElementById('renamePanel').style.display = 'none';
+  document.getElementById('renameFrom').value = '';
+  document.getElementById('renameTo').value = '';
+  document.getElementById('renameResult').textContent = '';
+});
+document.getElementById('confirmRename').addEventListener('click', () => {
+  const from = document.getElementById('renameFrom').value.trim();
+  const to = document.getElementById('renameTo').value.trim();
+  if (!from || !to) return;
+  let count = 0;
+  log.forEach(e => { if (e.itemName === from) { e.itemName = to; count++; } });
+  const resultEl = document.getElementById('renameResult');
+  if (count > 0) {
+    resultEl.textContent = `Renamed ${count} log entr${count === 1 ? 'y' : 'ies'} from "${from}" to "${to}".`;
+    renderLog();
+    saveToOneDrive();
+  } else {
+    resultEl.textContent = `No log entries matched "${from}" exactly — copy the name straight from the log below to be sure.`;
+  }
+});
 document.getElementById('searchInput').addEventListener('input', e => { search = e.target.value; render(); });
 document.getElementById('addBtn').addEventListener('click', () => {
   document.getElementById('addPanel').style.display = 'block';
@@ -499,7 +540,8 @@ document.getElementById('confirmAdd').addEventListener('click', () => {
   document.getElementById('cancelAdd').click();
   persist();
 });
-document.getElementById('sortSelect').addEventListener('change', e => { sortMode = e.target.value; render(); });
+document.getElementById('sortSelect').addEventListener('change', e => { sortMetric = e.target.value; render(); });
+document.getElementById('sortDirBtn').addEventListener('click', () => { sortDir = sortDir === 'desc' ? 'asc' : 'desc'; render(); });
 document.getElementById('groupToggleBtn').addEventListener('click', () => { groupByCategory = !groupByCategory; render(); });
 document.getElementById('signOutBtn').addEventListener('click', () => msalInstance.logoutPopup().catch(() => {}));
 
